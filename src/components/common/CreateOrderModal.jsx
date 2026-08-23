@@ -38,11 +38,10 @@ export default function CreateOrderModal({ isOpen, onClose }) {
 
   const totalAmount = selectedItems.reduce((acc, i) => acc + i.price * i.qty, 0);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!customerName.trim() || !address.trim() || selectedItems.length === 0) return;
 
-    setSubmitting(true);
     const newOrderId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const newOrder = {
@@ -67,26 +66,17 @@ export default function CreateOrderModal({ isOpen, onClose }) {
       timestamp: 'Just now',
     };
 
-    try {
-      // 1. Write to Firestore
-      await setDoc(doc(db, 'orders', newOrderId), newOrder);
-      
-      // 2. Select the new order
-      setActiveOrder(newOrderId);
+    // 1. Instantly close modal and select order (zero UI freeze)
+    onClose();
+    setActiveOrder(newOrderId);
+    setSelectedItems([]);
+    setCustomerName('');
+    setAddress('');
 
-      // 3. Clear inputs
-      setSelectedItems([]);
-      setCustomerName('');
-      setAddress('');
-
-      // 4. Force Close Modal immediately
-      onClose();
-    } catch (err) {
-      console.error('Error adding order:', err);
-      alert('Error placing order: ' + err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    // 2. Write to Firebase in the background
+    setDoc(doc(db, 'orders', newOrderId), newOrder).catch((err) => {
+      console.error('Background write failed:', err);
+    });
   };
 
   return (
