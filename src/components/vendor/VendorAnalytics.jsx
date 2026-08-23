@@ -1,6 +1,7 @@
 import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, TrendingUp, ShoppingBag, Clock } from 'lucide-react';
+import { useOrderStore } from '../../store/orderStore';
 
 const HOURLY_DATA = [
   { time: '10 AM', revenue: 4200, orders: 2 },
@@ -13,65 +14,83 @@ const HOURLY_DATA = [
 ];
 
 export default function VendorAnalytics({ orders = [] }) {
+  const isDark = useOrderStore((state) => state.isDark);
+
   const totalRevenue = orders.reduce((acc, order) => {
     const rawPrice = parseInt(order.total?.replace(/[^0-9]/g, '') || 0, 10);
     return acc + rawPrice;
   }, 0);
 
   const completedCount = orders.filter((o) => o.status === 'delivered').length;
-  const inProgressCount = orders.filter((o) => o.status !== 'delivered').length;
+  const inProgressCount = orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length;
 
   return (
     <div className="space-y-6">
-      {/* Metrics Row */}
+      {/* 4 Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs uppercase font-semibold">Total Revenue</span>
-            <DollarSign className="w-4 h-4 text-emerald-400" />
+        <div className={`p-5 border rounded-2xl shadow-sm transition-colors duration-200 ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className="text-xs uppercase font-bold">Total Revenue</span>
+            <DollarSign className="w-4 h-4 text-emerald-500" />
           </div>
-          <p className="text-2xl font-bold text-white mt-2">Rs. {totalRevenue.toLocaleString()}</p>
-          <span className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
+          <p className={`text-2xl font-black mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+            Rs. {totalRevenue.toLocaleString()}
+          </p>
+          <span className="text-[11px] text-emerald-500 flex items-center gap-1 mt-1 font-semibold">
             <TrendingUp className="w-3 h-3" /> +14.2% from yesterday
           </span>
         </div>
 
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs uppercase font-semibold">In Progress</span>
-            <Clock className="w-4 h-4 text-amber-400" />
+        <div className={`p-5 border rounded-2xl shadow-sm transition-colors duration-200 ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className="text-xs uppercase font-bold">In Progress</span>
+            <Clock className="w-4 h-4 text-amber-500" />
           </div>
-          <p className="text-2xl font-bold text-amber-400 mt-2">{inProgressCount}</p>
-          <span className="text-[11px] text-slate-500 mt-1 block">Active kitchen tickets</span>
+          <p className="text-2xl font-black text-amber-500 mt-2">{inProgressCount}</p>
+          <span className={`text-[11px] mt-1 block ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            Active kitchen tickets
+          </span>
         </div>
 
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs uppercase font-semibold">Delivered</span>
-            <ShoppingBag className="w-4 h-4 text-blue-400" />
+        <div className={`p-5 border rounded-2xl shadow-sm transition-colors duration-200 ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className="text-xs uppercase font-bold">Delivered</span>
+            <ShoppingBag className="w-4 h-4 text-blue-500" />
           </div>
-          <p className="text-2xl font-bold text-blue-400 mt-2">{completedCount}</p>
-          <span className="text-[11px] text-emerald-400 mt-1 block">100% success rate</span>
+          <p className="text-2xl font-black text-blue-500 mt-2">{completedCount}</p>
+          <span className="text-[11px] text-emerald-500 mt-1 block font-semibold">100% success rate</span>
         </div>
 
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex justify-between items-center text-slate-400">
-            <span className="text-xs uppercase font-semibold">Avg. Delivery Time</span>
-            <Clock className="w-4 h-4 text-purple-400" />
+        <div className={`p-5 border rounded-2xl shadow-sm transition-colors duration-200 ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className={`flex justify-between items-center ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className="text-xs uppercase font-bold">Avg. Delivery</span>
+            <Clock className="w-4 h-4 text-purple-500" />
           </div>
-          <p className="text-2xl font-bold text-white mt-2">22 mins</p>
-          <span className="text-[11px] text-purple-400 mt-1 block">-3 mins faster</span>
+          <p className={`text-2xl font-black mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>22 mins</p>
+          <span className="text-[11px] text-purple-500 mt-1 block font-semibold">-3 mins faster</span>
         </div>
       </div>
 
-      {/* Hourly Sales Performance Chart */}
-      <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl">
+      {/* Chart */}
+      <div className={`p-6 border rounded-2xl shadow-sm transition-colors duration-200 ${
+        isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h4 className="font-bold text-base text-white">Today's Revenue Flow</h4>
-            <p className="text-xs text-slate-400">Hourly sales generated from online deliveries</p>
+            <h4 className={`font-bold text-base ${isDark ? 'text-white' : 'text-slate-900'}`}>Today's Revenue Flow</h4>
+            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Hourly sales generated from online deliveries</p>
           </div>
-          <span className="px-3 py-1 bg-slate-800 text-xs font-semibold rounded-lg text-slate-300">
+          <span className={`px-3 py-1 text-xs font-semibold rounded-lg ${
+            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+          }`}>
             Live Today
           </span>
         </div>
@@ -85,19 +104,19 @@ export default function VendorAnalytics({ orders = [] }) {
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="time" stroke="#64748b" fontSize={12} tickLine={false} />
+              <XAxis dataKey="time" stroke={isDark ? '#64748b' : '#94a3b8'} fontSize={12} tickLine={false} />
               <YAxis
-                stroke="#64748b"
+                stroke={isDark ? '#64748b' : '#94a3b8'}
                 fontSize={12}
                 tickLine={false}
                 tickFormatter={(val) => `Rs.${val / 1000}k`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#1e293b',
+                  backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                  borderColor: isDark ? '#334155' : '#e2e8f0',
                   borderRadius: '12px',
-                  color: '#fff',
+                  color: isDark ? '#fff' : '#0f172a',
                 }}
               />
               <Area

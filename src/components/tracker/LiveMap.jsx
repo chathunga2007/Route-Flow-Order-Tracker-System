@@ -4,10 +4,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useOrderStore } from '../../store/orderStore';
 import confetti from 'canvas-confetti';
+import { Gauge, Navigation, Sun } from 'lucide-react';
 
-// Coordinates (Colombo sample delivery route)
-const RESTAURANT_POS = [6.9271, 79.8612]; // Colombo Fort
-const CUSTOMER_POS = [6.8850, 79.8580];   // Colombo 03
+const RESTAURANT_POS = [6.9271, 79.8612];
+const CUSTOMER_POS = [6.8850, 79.8580];
 
 const ROUTE_PATH = [
   [6.9271, 79.8612],
@@ -17,7 +17,6 @@ const ROUTE_PATH = [
   [6.8850, 79.8580],
 ];
 
-// Custom Pulsing Markers
 const restaurantIcon = L.divIcon({
   className: 'custom-div-icon',
   html: `<div class="w-8 h-8 rounded-full bg-amber-500 border-2 border-slate-900 shadow-lg flex items-center justify-center text-white text-xs font-bold ring-4 ring-amber-500/20">🍔</div>`,
@@ -60,8 +59,9 @@ export default function LiveMap() {
   const status = currentOrder?.status || 'placed';
 
   const [driverPos, setDriverPos] = useState(RESTAURANT_POS);
+  const [speed, setSpeed] = useState(0);
+  const [distanceRemaining, setDistanceRemaining] = useState('2.4 km');
 
-  // Trigger celebration confetti when delivered
   useEffect(() => {
     if (status === 'delivered') {
       confetti({
@@ -70,21 +70,30 @@ export default function LiveMap() {
         origin: { y: 0.6 },
       });
       setDriverPos(CUSTOMER_POS);
+      setSpeed(0);
+      setDistanceRemaining('0.0 km');
     }
   }, [status]);
 
-  // Smooth route interpolation for Out for Delivery status
   useEffect(() => {
     if (status !== 'out_for_delivery') {
       setDriverPos(status === 'delivered' ? CUSTOMER_POS : RESTAURANT_POS);
+      setSpeed(0);
+      setDistanceRemaining(status === 'delivered' ? '0.0 km' : '2.4 km');
       return;
     }
 
     let step = 0;
     const totalSteps = ROUTE_PATH.length;
+    const distances = ['2.1 km', '1.6 km', '0.9 km', '0.4 km', 'Arriving'];
+    
+    setSpeed(36);
+
     const interval = setInterval(() => {
       step = (step + 1) % totalSteps;
       setDriverPos(ROUTE_PATH[step]);
+      setDistanceRemaining(distances[step]);
+      setSpeed(Math.floor(32 + Math.random() * 12)); // Dynamic speed fluctuations
     }, 2800);
 
     return () => clearInterval(interval);
@@ -92,9 +101,28 @@ export default function LiveMap() {
 
   return (
     <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
+      {/* Top Right Live Badge */}
       <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[400] flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-xl text-[10px] sm:text-xs font-semibold text-slate-200 shadow-lg">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="hidden sm:inline">Live GPS Tracking:</span> {status === 'out_for_delivery' ? 'En Route' : 'Stationary'}
+        <span className="hidden sm:inline">Live GPS:</span> {status === 'out_for_delivery' ? 'Driver En Route' : 'Stationary'}
+      </div>
+
+      {/* Driver Telemetry HUD Badge */}
+      <div className="absolute bottom-3 left-3 z-[400] flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-xl text-[11px] font-mono text-slate-300 shadow-xl">
+        <div className="flex items-center gap-1 text-blue-400">
+          <Gauge className="w-3.5 h-3.5" />
+          <span>{speed} km/h</span>
+        </div>
+        <span className="text-slate-600">|</span>
+        <div className="flex items-center gap-1 text-emerald-400">
+          <Navigation className="w-3.5 h-3.5" />
+          <span>{distanceRemaining}</span>
+        </div>
+        <span className="text-slate-600 hidden sm:inline">|</span>
+        <div className="hidden sm:flex items-center gap-1 text-amber-400">
+          <Sun className="w-3.5 h-3.5" />
+          <span>29°C</span>
+        </div>
       </div>
 
       <MapContainer
@@ -109,21 +137,18 @@ export default function LiveMap() {
         />
         <MapViewController center={driverPos} />
 
-        {/* Restaurant Point */}
         <Marker position={RESTAURANT_POS} icon={restaurantIcon}>
           <Popup className="text-slate-900 font-sans">
             <strong>Burger Lab HQ</strong> <br /> Order Kitchen
           </Popup>
         </Marker>
 
-        {/* Customer Destination Point */}
         <Marker position={CUSTOMER_POS} icon={customerIcon}>
           <Popup className="text-slate-900 font-sans">
             <strong>Delivery Destination</strong> <br /> {currentOrder?.address || 'Customer Location'}
           </Popup>
         </Marker>
 
-        {/* Dynamic Moving Driver */}
         <Marker position={driverPos} icon={driverIcon}>
           <Popup className="text-slate-900 font-sans">
             <strong>{currentOrder?.driver?.name || 'Driver'}</strong> <br />
@@ -131,7 +156,6 @@ export default function LiveMap() {
           </Popup>
         </Marker>
 
-        {/* Route Line */}
         <Polyline
           positions={ROUTE_PATH}
           pathOptions={{

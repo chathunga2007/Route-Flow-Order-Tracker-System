@@ -17,6 +17,9 @@ export const useOrderStore = create((set, get) => ({
   orders: [],
   activeOrderId: null,
   loading: true,
+  isDark: true,
+
+  toggleTheme: () => set((state) => ({ isDark: !state.isDark })),
 
   setActiveOrder: (id) => set({ activeOrderId: id }),
 

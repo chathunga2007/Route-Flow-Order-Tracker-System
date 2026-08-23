@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useOrderStore } from '../../store/orderStore';
+import { getRandomDriver } from '../../utils/fleet';
 import { X, Plus, Trash2, ShoppingBag, MapPin, Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const MENU_ITEMS = [
   { id: '1', name: 'Double Cheese Burger', price: 1200 },
@@ -18,11 +21,17 @@ export default function CreateOrderModal({ isOpen, onClose }) {
   const [suggestions, setSuggestions] = useState([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [mounted, setMounted] = useState(false);
+
   const setActiveOrder = useOrderStore((state) => state.setActiveOrder);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Sri Lanka Live Address Autocomplete
   useEffect(() => {
-    if (address.length < 3) {
+    if (address.trim().length < 3) {
       setSuggestions([]);
       return;
     }
@@ -38,7 +47,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
         const data = await res.json();
         setSuggestions(data || []);
       } catch (err) {
-        console.error(err);
+        console.error('Geocoding error:', err);
       } finally {
         setIsSearchingAddress(false);
       }
@@ -47,7 +56,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
     return () => clearTimeout(timer);
   }, [address]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const addItem = (item) => {
     const existing = selectedItems.find((i) => i.id === item.id);
@@ -71,6 +80,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
     if (!customerName.trim() || !address.trim() || selectedItems.length === 0) return;
 
     const newOrderId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
+    const assignedDriver = getRandomDriver();
 
     const newOrder = {
       customer: customerName.trim(),
@@ -82,162 +92,170 @@ export default function CreateOrderModal({ isOpen, onClose }) {
         price: `Rs. ${(i.price * i.qty).toLocaleString()}`,
       })),
       total: `Rs. ${totalAmount.toLocaleString()}`,
-      driver: {
-        name: 'Kasun Perera',
-        rating: 4.9,
-        vehicle: 'Honda CB Hornet (WP BD-4821)',
-        phone: '+94 71 234 5678',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        deliveriesCount: '1,420+'
-      },
-      eta: '25 - 30 mins',
+      driver: assignedDriver,
+      eta: '20 - 30 mins',
       timestamp: 'Just now',
     };
 
+    // 1. Instant optimistic close (Zero UI freeze)
     onClose();
     setActiveOrder(newOrderId);
     setSelectedItems([]);
     setCustomerName('');
     setAddress('');
+    setSuggestions([]);
 
+    // 2. Background Firestore write
     setDoc(doc(db, 'orders', newOrderId), newOrder).catch((err) => {
       console.error('Background write failed:', err);
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/90">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl">
-              <ShoppingBag className="w-5 h-5" />
+  return createPortal(
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh] my-auto text-white"
+        >
+          {/* Header */}
+          <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/90 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-lg text-white">Place New Order</h3>
             </div>
-            <h3 className="font-bold text-lg text-white">Place New Order</h3>
-          </div>
-          <button 
-            type="button"
-            onClick={onClose} 
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
-          <div>
-            <label className="text-xs font-semibold uppercase text-slate-400 block mb-1.5">Your Name</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Kasun Fernando"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
-            />
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Delivery Address with Autocomplete */}
-          <div className="relative">
-            <div className="flex justify-between items-center mb-1.5">
-              <label className="text-xs font-semibold uppercase text-slate-400 block">Delivery Address (Sri Lanka)</label>
-              {isSearchingAddress && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
+          {/* Form Content */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1 bg-slate-950/60">
+            <div>
+              <label className="text-xs font-semibold uppercase text-slate-400 block mb-1.5">
+                Your Name
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Kasun Fernando"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+              />
             </div>
+
+            {/* Address with Live Sri Lanka Geocode Autocomplete */}
             <div className="relative">
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-semibold uppercase text-slate-400 block">
+                  Delivery Address (Sri Lanka)
+                </label>
+                {isSearchingAddress && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
+              </div>
               <input
                 type="text"
                 required
                 placeholder="e.g. Galle Road, Colombo / Kandy"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
               />
+
+              {suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden divide-y divide-slate-800">
+                  {suggestions.map((item, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setAddress(item.display_name);
+                        setSuggestions([]);
+                      }}
+                      className="w-full text-left p-2.5 hover:bg-blue-600/20 text-xs text-slate-300 hover:text-white flex items-center gap-2 transition cursor-pointer"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span className="truncate">{item.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden divide-y divide-slate-800">
-                {suggestions.map((item, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => {
-                      setAddress(item.display_name);
-                      setSuggestions([]);
-                    }}
-                    className="w-full text-left p-2.5 hover:bg-blue-600/20 text-xs text-slate-300 hover:text-white flex items-center gap-2 transition cursor-pointer"
+            {/* Menu Selection */}
+            <div>
+              <label className="text-xs font-semibold uppercase text-slate-400 block mb-2">
+                Select Items
+              </label>
+              <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
+                {MENU_ITEMS.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs"
                   >
-                    <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span className="truncate">{item.display_name}</span>
-                  </button>
+                    <span className="text-slate-200 font-medium">{item.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-blue-400 font-semibold">Rs. {item.price}</span>
+                      <button
+                        type="button"
+                        onClick={() => addItem(item)}
+                        className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Menu Selection */}
-          <div>
-            <label className="text-xs font-semibold uppercase text-slate-400 block mb-2">Select Items</label>
-            <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
-              {MENU_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs"
-                >
-                  <span className="text-slate-200 font-medium">{item.name}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-blue-400 font-semibold">Rs. {item.price}</span>
-                    <button
-                      type="button"
-                      onClick={() => addItem(item)}
-                      className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
-          </div>
 
-          {/* Cart Summary */}
-          {selectedItems.length > 0 && (
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase">Selected Items</span>
-              {selectedItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-center text-xs">
-                  <span className="text-slate-300">
-                    {item.qty}x {item.name}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white">Rs. {item.price * item.qty}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.id)}
-                      className="text-red-400 hover:text-red-300 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            {/* Selected Items Summary */}
+            {selectedItems.length > 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2">
+                <span className="text-xs font-semibold text-slate-400 uppercase">Selected Items</span>
+                {selectedItems.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center text-xs">
+                    <span className="text-slate-300">
+                      {item.qty}x {item.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-white">Rs. {item.price * item.qty}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className="text-red-400 hover:text-red-300 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
+                ))}
+                <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-bold">
+                  <span className="text-slate-300">Total:</span>
+                  <span className="text-emerald-400">Rs. {totalAmount.toLocaleString()}</span>
                 </div>
-              ))}
-              <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-bold">
-                <span className="text-slate-300">Total:</span>
-                <span className="text-emerald-400">Rs. {totalAmount.toLocaleString()}</span>
               </div>
-            </div>
-          )}
+            )}
 
-          <button
-            type="submit"
-            disabled={selectedItems.length === 0}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition cursor-pointer"
-          >
-            Confirm & Place Live Order
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={selectedItems.length === 0}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition cursor-pointer"
+            >
+              Confirm & Place Live Order
+            </button>
+          </form>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>,
+    document.body
   );
 }
