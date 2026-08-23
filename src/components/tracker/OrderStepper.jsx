@@ -1,79 +1,112 @@
-import React from 'react';
-import { Check, Clock, PackageCheck, ChefHat, Bike, Home } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Clock, Utensils, Bike, CheckCircle2, Receipt } from 'lucide-react';
+import ReceiptModal from './ReceiptModal';
+import { useOrderStore } from '../../store/orderStore';
 
-const STAGES = [
-  { id: 'placed', label: 'Order Placed', icon: Clock, desc: 'Your order has been received' },
-  { id: 'preparing', label: 'Preparing', icon: ChefHat, desc: 'Kitchen is preparing your items' },
-  { id: 'ready', label: 'Ready for Pickup', icon: PackageCheck, desc: 'Driver is assigning' },
-  { id: 'out_for_delivery', label: 'Out for Delivery', icon: Bike, desc: 'On the way to your door' },
-  { id: 'delivered', label: 'Delivered', icon: Home, desc: 'Order completed safely' },
+const STEPS = [
+  { id: 'placed', label: 'Order Placed', icon: Clock, desc: 'Order received' },
+  { id: 'preparing', label: 'Preparing', icon: Utensils, desc: 'Kitchen is cooking' },
+  { id: 'ready', label: 'Ready for Pickup', icon: Check, desc: 'Driver is arriving' },
+  { id: 'out_for_delivery', label: 'Out for Delivery', icon: Bike, desc: 'En route' },
+  { id: 'delivered', label: 'Delivered', icon: CheckCircle2, desc: 'Completed safely' },
 ];
 
-export default function OrderStepper({ currentStatus = 'preparing' }) {
-  const currentIndex = STAGES.findIndex((stage) => stage.id === currentStatus);
+export default function OrderStepper({ currentStatus = 'placed' }) {
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(1320); // 22 mins
+  const { orders, activeOrderId } = useOrderStore();
+  const currentOrder = orders.find((o) => o.id === activeOrderId) || orders[0];
+
+  const currentIdx = STEPS.findIndex((s) => s.id === currentStatus);
+
+  useEffect(() => {
+    if (currentStatus === 'delivered') {
+      setTimeLeft(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [currentStatus]);
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
 
   return (
-    <div className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-white">
-      <div className="flex items-center justify-between mb-8">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
         <div>
-          <h3 className="text-xl font-bold tracking-tight">Live Tracking</h3>
-          <p className="text-sm text-slate-400">Order ID: #ORD-98421</p>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-lg text-white">Live Tracking</h3>
+            <span className="font-mono text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-lg">
+              #{currentOrder?.id || 'ORD-LIVE'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">Real-time status synced with kitchen</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse">
-          Live Updates
-        </span>
+
+        <div className="flex items-center gap-3">
+          {currentStatus !== 'delivered' ? (
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+              <span className="text-xs font-mono font-bold text-blue-400">
+                ETA: {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')} mins
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+              Delivered Successfully 🎉
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsReceiptOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+          >
+            <Receipt className="w-3.5 h-3.5 text-emerald-400" /> View Receipt
+          </button>
+        </div>
       </div>
 
-      {/* Progress Bar & Icons */}
-      <div className="relative">
-        {/* Background Connecting Track */}
-        <div className="hidden md:block absolute top-5 left-6 right-6 h-1 bg-slate-800 -z-0" />
+      {/* Stepper Progress */}
+      <div className="relative flex flex-col md:flex-row justify-between gap-4">
+        {STEPS.map((step, idx) => {
+          const isDone = idx <= currentIdx;
+          const isCurrent = idx === currentIdx;
+          const StepIcon = step.icon;
 
-        {/* Active Progress Fill */}
-        <div
-          className="hidden md:block absolute top-5 left-6 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-700 ease-in-out -z-0"
-          style={{
-            width: `${(Math.max(0, currentIndex) / (STAGES.length - 1)) * 90}%`,
-          }}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 relative z-10">
-          {STAGES.map((stage, index) => {
-            const isCompleted = index < currentIndex;
-            const isCurrent = index === currentIndex;
-            const Icon = stage.icon;
-
-            return (
-              <div key={stage.id} className="flex md:flex-col items-center gap-4 md:gap-3 text-left md:text-center">
-                {/* Step Circle Indicator */}
-                <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 ${
-                    isCompleted
-                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                      : isCurrent
-                      ? 'bg-blue-600 text-white ring-4 ring-blue-500/30 shadow-lg shadow-blue-500/30'
-                      : 'bg-slate-800 text-slate-500 border border-slate-700'
-                  }`}
-                >
-                  {isCompleted ? <Check className="w-5 h-5 stroke-[2.5]" /> : <Icon className="w-5 h-5" />}
-                </div>
-
-                {/* Step Labels */}
-                <div>
-                  <p
-                    className={`text-sm font-semibold tracking-wide ${
-                      isCurrent ? 'text-blue-400' : isCompleted ? 'text-slate-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {stage.label}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{stage.desc}</p>
-                </div>
+          return (
+            <div key={step.id} className="flex-1 flex md:flex-col items-center gap-3 text-left md:text-center relative">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 z-10 ${
+                  isCurrent
+                    ? 'bg-blue-600 text-white ring-4 ring-blue-500/20 shadow-lg scale-110'
+                    : isDone
+                    ? 'bg-emerald-500 text-slate-950 font-bold'
+                    : 'bg-slate-800 text-slate-500 border border-slate-700'
+                }`}
+              >
+                <StepIcon className="w-4 h-4" />
               </div>
-            );
-          })}
-        </div>
+
+              <div>
+                <p className={`text-xs font-bold ${isDone ? 'text-white' : 'text-slate-500'}`}>
+                  {step.label}
+                </p>
+                <p className="text-[10px] text-slate-400 hidden md:block">{step.desc}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      <ReceiptModal
+        isOpen={isReceiptOpen}
+        onClose={() => setIsReceiptOpen(false)}
+        order={currentOrder}
+      />
     </div>
   );
 }

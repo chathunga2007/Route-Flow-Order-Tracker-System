@@ -1,4 +1,3 @@
-// Lightweight procedural synthesizer using Web Audio API
 export const playNotificationSound = (type = 'advance') => {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -6,9 +5,7 @@ export const playNotificationSound = (type = 'advance') => {
     const ctx = new AudioCtx();
 
     if (type === 'advance') {
-      // High-pitched pleasant bell chime (Two tones)
       const now = ctx.currentTime;
-      
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -31,7 +28,6 @@ export const playNotificationSound = (type = 'advance') => {
       osc2.start(now + 0.12);
       osc2.stop(now + 0.7);
     } else if (type === 'new_order') {
-      // Cash register / success tone
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -46,6 +42,6 @@ export const playNotificationSound = (type = 'advance') => {
       osc.stop(now + 0.4);
     }
   } catch (e) {
-    console.warn('Audio playback restricted by browser policy until user interacts:', e);
+    console.warn('Audio policy notification:', e);
   }
 };

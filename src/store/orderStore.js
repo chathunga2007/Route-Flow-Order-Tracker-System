@@ -20,7 +20,6 @@ export const useOrderStore = create((set, get) => ({
 
   setActiveOrder: (id) => set({ activeOrderId: id }),
 
-  // Real-time Firestore Listener with Smart Audio Alerts
   subscribeToOrders: () => {
     const ordersCol = collection(db, 'orders');
     
@@ -34,7 +33,6 @@ export const useOrderStore = create((set, get) => ({
 
         const previousOrders = get().orders;
 
-        // Skip audio alerts during initial app boot
         if (!isFirstLoad) {
           snapshot.docChanges().forEach((change) => {
             const data = change.doc.data();
@@ -51,7 +49,7 @@ export const useOrderStore = create((set, get) => ({
               const oldOrder = previousOrders.find((o) => o.id === orderId);
               if (oldOrder && oldOrder.status !== data.status) {
                 playNotificationSound('advance');
-                const statusName = data.status.replace(/_/g, ' ').toUpperCase();
+                const statusName = data.status?.replace(/_/g, ' ').toUpperCase();
                 toast.info(`📦 Order Status Updated!`, {
                   description: `Order #${orderId} is now ${statusName}`,
                 });
@@ -69,7 +67,7 @@ export const useOrderStore = create((set, get) => ({
         });
       },
       (error) => {
-        console.error("Firebase Snapshot Error: ", error);
+        console.error("Firestore error: ", error);
         set({ loading: false });
       }
     );
@@ -85,7 +83,7 @@ export const useOrderStore = create((set, get) => ({
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error('Error updating order:', error);
       toast.error('Failed to update status: ' + error.message);
     }
   },

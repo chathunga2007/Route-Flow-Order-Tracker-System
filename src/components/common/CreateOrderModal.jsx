@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useOrderStore } from '../../store/orderStore';
 import { X, Plus, Trash2, ShoppingBag } from 'lucide-react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 const MENU_ITEMS = [
@@ -16,7 +16,6 @@ export default function CreateOrderModal({ isOpen, onClose }) {
   const [customerName, setCustomerName] = useState('');
   const [address, setAddress] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
   const setActiveOrder = useOrderStore((state) => state.setActiveOrder);
 
   if (!isOpen) return null;
@@ -66,26 +65,26 @@ export default function CreateOrderModal({ isOpen, onClose }) {
       timestamp: 'Just now',
     };
 
-    // 1. Instantly close modal and select order (zero UI freeze)
+    // Instant Close & Reset
     onClose();
     setActiveOrder(newOrderId);
     setSelectedItems([]);
     setCustomerName('');
     setAddress('');
 
-    // 2. Write to Firebase in the background
+    // Background Firebase Commit
     setDoc(doc(db, 'orders', newOrderId), newOrder).catch((err) => {
       console.error('Background write failed:', err);
     });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center">
+        <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/90">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+            <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-lg text-white">Place New Order</h3>
@@ -93,7 +92,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
           <button 
             type="button"
             onClick={onClose} 
-            className="text-slate-400 hover:text-white transition p-1"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -125,14 +124,13 @@ export default function CreateOrderModal({ isOpen, onClose }) {
             />
           </div>
 
-          {/* Menu Selection */}
           <div>
             <label className="text-xs font-semibold uppercase text-slate-400 block mb-2">Select Items</label>
             <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
               {MENU_ITEMS.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl text-xs"
+                  className="flex items-center justify-between p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs"
                 >
                   <span className="text-slate-200 font-medium">{item.name}</span>
                   <div className="flex items-center gap-3">
@@ -140,7 +138,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
                     <button
                       type="button"
                       onClick={() => addItem(item)}
-                      className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition"
+                      className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -150,9 +148,8 @@ export default function CreateOrderModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Cart Summary */}
           {selectedItems.length > 0 && (
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2">
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
               <span className="text-xs font-semibold text-slate-400 uppercase">Selected Items</span>
               {selectedItems.map((item) => (
                 <div key={item.id} className="flex justify-between items-center text-xs">
@@ -164,7 +161,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
                     <button
                       type="button"
                       onClick={() => removeItem(item.id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-400 hover:text-red-300 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -178,13 +175,12 @@ export default function CreateOrderModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* Action Buttons */}
           <button
             type="submit"
-            disabled={submitting || selectedItems.length === 0}
+            disabled={selectedItems.length === 0}
             className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition cursor-pointer"
           >
-            {submitting ? 'Placing Order...' : 'Confirm & Place Live Order'}
+            Confirm & Place Live Order
           </button>
         </form>
       </div>
