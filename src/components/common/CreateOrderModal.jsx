@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOrderStore } from '../../store/orderStore';
-import { X, Plus, Trash2, ShoppingBag } from 'lucide-react';
+import { X, Plus, Trash2, ShoppingBag, MapPin, Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -15,8 +15,37 @@ const MENU_ITEMS = [
 export default function CreateOrderModal({ isOpen, onClose }) {
   const [customerName, setCustomerName] = useState('');
   const [address, setAddress] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const setActiveOrder = useOrderStore((state) => state.setActiveOrder);
+
+  // Sri Lanka Live Address Autocomplete
+  useEffect(() => {
+    if (address.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            address + ', Sri Lanka'
+          )}&limit=4&countrycodes=lk`
+        );
+        const data = await res.json();
+        setSuggestions(data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [address]);
 
   if (!isOpen) return null;
 
@@ -57,7 +86,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
         name: 'Kasun Perera',
         rating: 4.9,
         vehicle: 'Honda CB Hornet (WP BD-4821)',
-        phone: '+94 77 123 4567',
+        phone: '+94 71 234 5678',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         deliveriesCount: '1,420+'
       },
@@ -65,14 +94,12 @@ export default function CreateOrderModal({ isOpen, onClose }) {
       timestamp: 'Just now',
     };
 
-    // Instant Close & Reset
     onClose();
     setActiveOrder(newOrderId);
     setSelectedItems([]);
     setCustomerName('');
     setAddress('');
 
-    // Background Firebase Commit
     setDoc(doc(db, 'orders', newOrderId), newOrder).catch((err) => {
       console.error('Background write failed:', err);
     });
@@ -112,18 +139,44 @@ export default function CreateOrderModal({ isOpen, onClose }) {
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold uppercase text-slate-400 block mb-1.5">Delivery Address</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. No 23, Galle Road, Bambalapitiya"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
-            />
+          {/* Delivery Address with Autocomplete */}
+          <div className="relative">
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-xs font-semibold uppercase text-slate-400 block">Delivery Address (Sri Lanka)</label>
+              {isSearchingAddress && <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                placeholder="e.g. Galle Road, Colombo / Kandy"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
+              />
+            </div>
+
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-30 overflow-hidden divide-y divide-slate-800">
+                {suggestions.map((item, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setAddress(item.display_name);
+                      setSuggestions([]);
+                    }}
+                    className="w-full text-left p-2.5 hover:bg-blue-600/20 text-xs text-slate-300 hover:text-white flex items-center gap-2 transition cursor-pointer"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <span className="truncate">{item.display_name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Menu Selection */}
           <div>
             <label className="text-xs font-semibold uppercase text-slate-400 block mb-2">Select Items</label>
             <div className="grid grid-cols-1 gap-2 max-h-36 overflow-y-auto pr-1">
@@ -148,6 +201,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
             </div>
           </div>
 
+          {/* Cart Summary */}
           {selectedItems.length > 0 && (
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2">
               <span className="text-xs font-semibold text-slate-400 uppercase">Selected Items</span>

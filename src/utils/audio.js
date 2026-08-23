@@ -1,11 +1,21 @@
+let soundEnabled = true;
+
+export const setSoundEnabled = (enabled) => {
+  soundEnabled = enabled;
+};
+
+export const getSoundEnabled = () => soundEnabled;
+
 export const playNotificationSound = (type = 'advance') => {
+  if (!soundEnabled) return;
+
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
+    const now = ctx.currentTime;
 
     if (type === 'advance') {
-      const now = ctx.currentTime;
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -28,7 +38,6 @@ export const playNotificationSound = (type = 'advance') => {
       osc2.start(now + 0.12);
       osc2.stop(now + 0.7);
     } else if (type === 'new_order') {
-      const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';
@@ -40,8 +49,19 @@ export const playNotificationSound = (type = 'advance') => {
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + 0.4);
+    } else if (type === 'bell') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, now);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.8);
     }
   } catch (e) {
-    console.warn('Audio policy notification:', e);
+    console.warn('Audio blocked:', e);
   }
 };

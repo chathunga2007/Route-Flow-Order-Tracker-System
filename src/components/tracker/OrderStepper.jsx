@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Clock, Utensils, Bike, CheckCircle2, Receipt } from 'lucide-react';
+import { Check, Clock, Utensils, Bike, CheckCircle2, Receipt, Star } from 'lucide-react';
 import ReceiptModal from './ReceiptModal';
+import DriverRatingModal from './DriverRatingModal';
 import { useOrderStore } from '../../store/orderStore';
 
 const STEPS = [
@@ -13,7 +14,8 @@ const STEPS = [
 
 export default function OrderStepper({ currentStatus = 'placed' }) {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(1320); // 22 mins
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(1320);
   const { orders, activeOrderId } = useOrderStore();
   const currentOrder = orders.find((o) => o.id === activeOrderId) || orders[0];
 
@@ -46,18 +48,22 @@ export default function OrderStepper({ currentStatus = 'placed' }) {
           <p className="text-xs text-slate-400 mt-0.5">Real-time status synced with kitchen</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {currentStatus !== 'delivered' ? (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
               <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
               <span className="text-xs font-mono font-bold text-blue-400">
                 ETA: {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')} mins
               </span>
             </div>
           ) : (
-            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
-              Delivered Successfully 🎉
-            </span>
+            <button
+              type="button"
+              onClick={() => setIsRatingOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-bold transition cursor-pointer"
+            >
+              <Star className="w-3.5 h-3.5 fill-amber-400" /> Rate Courier
+            </button>
           )}
 
           <button
@@ -105,6 +111,12 @@ export default function OrderStepper({ currentStatus = 'placed' }) {
       <ReceiptModal
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
+        order={currentOrder}
+      />
+
+      <DriverRatingModal
+        isOpen={isRatingOpen}
+        onClose={() => setIsRatingOpen(false)}
         order={currentOrder}
       />
     </div>
