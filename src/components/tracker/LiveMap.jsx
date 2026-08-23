@@ -91,10 +91,10 @@ export default function LiveMap() {
   }, [status]);
 
   return (
-    <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
-      <div className="absolute top-4 right-4 z-[400] flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 shadow-lg">
+    <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[400] flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-xl text-[10px] sm:text-xs font-semibold text-slate-200 shadow-lg">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        Live GPS Tracking: {status === 'out_for_delivery' ? 'Driver En Route' : 'Stationary'}
+        <span className="hidden sm:inline">Live GPS Tracking:</span> {status === 'out_for_delivery' ? 'En Route' : 'Stationary'}
       </div>
 
       <MapContainer
