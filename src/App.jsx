@@ -6,6 +6,7 @@ import LiveMap from './components/tracker/LiveMap';
 import VendorDashboard from './components/vendor/VendorDashboard';
 import DriverPortal from './components/driver/DriverPortal';
 import CreateOrderModal from './components/common/CreateOrderModal';
+import AICopilotOrb from './components/common/AICopilotOrb';
 import { LayoutDashboard, Compass, Database, ShoppingBag, Loader2, Code2, Heart, Moon, Sun, Bike } from 'lucide-react';
 import { Toaster } from 'sonner';
 
@@ -129,7 +130,7 @@ export default function App() {
             }`}>
               <button
                 onClick={() => setViewMode('customer')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'customer'
                     ? 'bg-blue-600 text-white shadow-md'
                     : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
@@ -139,7 +140,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setViewMode('vendor')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'vendor'
                     ? 'bg-blue-600 text-white shadow-md'
                     : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
@@ -149,7 +150,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setViewMode('driver')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'driver'
                     ? 'bg-blue-600 text-white shadow-md'
                     : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
@@ -224,6 +225,7 @@ export default function App() {
         )}
 
         <CreateOrderModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        <AICopilotOrb />
       </div>
 
       {/* Footer */}
