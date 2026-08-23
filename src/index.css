@@ -1,13 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  body {
-    @apply antialiased selection:bg-blue-500 selection:text-white;
-  }
+/* Selection Highlight */
+::selection {
+  background-color: #3b82f6;
+  color: #ffffff;
 }
 
+/* Custom Scrollbar Styles for Dark & Light Themes */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -39,7 +38,7 @@ body.dark ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
 
-/* Hide scrollbar utility classes */
+/* Hide scrollbar utility class */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
