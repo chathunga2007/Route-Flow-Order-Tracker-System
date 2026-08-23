@@ -45,39 +45,41 @@ export default function CreateOrderModal({ isOpen, onClose }) {
     setSubmitting(true);
     const newOrderId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    try {
-      const newOrder = {
-        customer: customerName.trim(),
-        address: address.trim(),
-        status: 'placed',
-        items: selectedItems.map((i) => ({
-          name: i.name,
-          qty: i.qty,
-          price: `Rs. ${(i.price * i.qty).toLocaleString()}`,
-        })),
-        total: `Rs. ${totalAmount.toLocaleString()}`,
-        driver: {
-          name: 'Kasun Perera',
-          rating: 4.9,
-          vehicle: 'Honda CB Hornet (WP BD-4821)',
-          phone: '+94 77 123 4567',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          deliveriesCount: '1,420+'
-        },
-        eta: '25 - 30 mins',
-        timestamp: 'Just now',
-        createdAt: serverTimestamp(),
-      };
+    const newOrder = {
+      customer: customerName.trim(),
+      address: address.trim(),
+      status: 'placed',
+      items: selectedItems.map((i) => ({
+        name: i.name,
+        qty: i.qty,
+        price: `Rs. ${(i.price * i.qty).toLocaleString()}`,
+      })),
+      total: `Rs. ${totalAmount.toLocaleString()}`,
+      driver: {
+        name: 'Kasun Perera',
+        rating: 4.9,
+        vehicle: 'Honda CB Hornet (WP BD-4821)',
+        phone: '+94 77 123 4567',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        deliveriesCount: '1,420+'
+      },
+      eta: '25 - 30 mins',
+      timestamp: 'Just now',
+    };
 
+    try {
+      // 1. Write to Firestore
       await setDoc(doc(db, 'orders', newOrderId), newOrder);
       
-      // Auto switch focus to the new order in tracking view
+      // 2. Select the new order
       setActiveOrder(newOrderId);
 
-      // Reset state and close modal
+      // 3. Clear inputs
       setSelectedItems([]);
       setCustomerName('');
       setAddress('');
+
+      // 4. Force Close Modal immediately
       onClose();
     } catch (err) {
       console.error('Error adding order:', err);
