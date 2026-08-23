@@ -1,109 +1,147 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useOrderStore } from '../../store/orderStore';
+import confetti from 'canvas-confetti';
 
-// Custom Map Marker Icons using SVGs
-const createCustomIcon = (bgColor, iconSvg) =>
-  L.divIcon({
-    className: 'custom-leaflet-marker',
-    html: `<div style="
-      background-color: ${bgColor};
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 3px solid #ffffff;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-    ">${iconSvg}</div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-  });
+// Coordinates (Colombo sample delivery route)
+const RESTAURANT_POS = [6.9271, 79.8612]; // Colombo Fort
+const CUSTOMER_POS = [6.8850, 79.8580];   // Colombo 03
 
-const restaurantIcon = createCustomIcon(
-  '#f59e0b',
-  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>'
-);
-
-const customerIcon = createCustomIcon(
-  '#10b981',
-  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>'
-);
-
-const driverIcon = createCustomIcon(
-  '#3b82f6',
-  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="18.5" cy="17.5" r="3.5"></circle><circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="15" cy="5" r="1"></circle><path d="M12 17.5V14l-3-3 4-3 2 3h2"></path></svg>'
-);
-
-// Route waypoint coordinates (Restaurant -> Customer)
-const ROUTE_COORDINATES = [
-  [6.9271, 79.8612], // Restaurant (Colombo 01)
-  [6.9185, 79.8590],
-  [6.9100, 79.8550],
-  [6.9020, 79.8540],
-  [6.8950, 79.8555], // Customer (Colombo 03)
+const ROUTE_PATH = [
+  [6.9271, 79.8612],
+  [6.9180, 79.8590],
+  [6.9080, 79.8560],
+  [6.8970, 79.8550],
+  [6.8850, 79.8580],
 ];
 
-export default function LiveMap() {
-  const [driverPosition, setDriverPosition] = useState(ROUTE_COORDINATES[1]);
-  const [stepIndex, setStepIndex] = useState(1);
+// Custom Pulsing Markers
+const restaurantIcon = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<div class="w-8 h-8 rounded-full bg-amber-500 border-2 border-slate-900 shadow-lg flex items-center justify-center text-white text-xs font-bold ring-4 ring-amber-500/20">🍔</div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
 
-  // Simulate live driver movement along the route
+const customerIcon = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<div class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-slate-900 shadow-lg flex items-center justify-center text-white text-xs font-bold ring-4 ring-emerald-500/20">📍</div>`,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+const driverIcon = L.divIcon({
+  className: 'custom-div-icon',
+  html: `
+    <div class="relative flex items-center justify-center">
+      <span class="absolute w-10 h-10 rounded-full bg-blue-500/30 animate-ping"></span>
+      <div class="w-9 h-9 rounded-full bg-blue-600 border-2 border-white shadow-2xl flex items-center justify-center text-white text-sm font-bold z-10">
+        🛵
+      </div>
+    </div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+function MapViewController({ center }) {
+  const map = useMap();
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStepIndex((prev) => {
-        const next = (prev + 1) % ROUTE_COORDINATES.length;
-        setDriverPosition(ROUTE_COORDINATES[next]);
-        return next;
+    map.flyTo(center, 14, { duration: 1.5 });
+  }, [center, map]);
+  return null;
+}
+
+export default function LiveMap() {
+  const { orders, activeOrderId } = useOrderStore();
+  const currentOrder = orders.find((o) => o.id === activeOrderId) || orders[0];
+  const status = currentOrder?.status || 'placed';
+
+  const [driverPos, setDriverPos] = useState(RESTAURANT_POS);
+
+  // Trigger celebration confetti when delivered
+  useEffect(() => {
+    if (status === 'delivered') {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
       });
-    }, 3500);
+      setDriverPos(CUSTOMER_POS);
+    }
+  }, [status]);
+
+  // Smooth route interpolation for Out for Delivery status
+  useEffect(() => {
+    if (status !== 'out_for_delivery') {
+      setDriverPos(status === 'delivered' ? CUSTOMER_POS : RESTAURANT_POS);
+      return;
+    }
+
+    let step = 0;
+    const totalSteps = ROUTE_PATH.length;
+    const interval = setInterval(() => {
+      step = (step + 1) % totalSteps;
+      setDriverPos(ROUTE_PATH[step]);
+    }, 2800);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [status]);
 
   return (
-    <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-800 shadow-xl relative">
+    <div className="w-full h-80 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
+      <div className="absolute top-4 right-4 z-[400] flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 rounded-xl text-xs font-semibold text-slate-200 shadow-lg">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        Live GPS Tracking: {status === 'out_for_delivery' ? 'Driver En Route' : 'Stationary'}
+      </div>
+
       <MapContainer
-        center={[6.912, 79.857]}
+        center={driverPos}
         zoom={13}
         scrollWheelZoom={false}
-        className="w-full h-full z-0"
+        className="w-full h-full"
       >
-        {/* Dark Mode CartoDB Tile Layer */}
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
-
-        {/* Planned Route Line */}
-        <Polyline
-          positions={ROUTE_COORDINATES}
-          pathOptions={{ color: '#3b82f6', weight: 4, dashArray: '6, 8', opacity: 0.8 }}
-        />
+        <MapViewController center={driverPos} />
 
         {/* Restaurant Point */}
-        <Marker position={ROUTE_COORDINATES[0]} icon={restaurantIcon}>
-          <Popup className="text-slate-900 font-semibold">Burger Hub Kitchen</Popup>
+        <Marker position={RESTAURANT_POS} icon={restaurantIcon}>
+          <Popup className="text-slate-900 font-sans">
+            <strong>Burger Lab HQ</strong> <br /> Order Kitchen
+          </Popup>
         </Marker>
 
-        {/* Live Courier Point */}
-        <Marker position={driverPosition} icon={driverIcon}>
-          <Popup className="text-slate-900 font-semibold">Courier Kasun (Live)</Popup>
+        {/* Customer Destination Point */}
+        <Marker position={CUSTOMER_POS} icon={customerIcon}>
+          <Popup className="text-slate-900 font-sans">
+            <strong>Delivery Destination</strong> <br /> {currentOrder?.address || 'Customer Location'}
+          </Popup>
         </Marker>
 
-        {/* Customer Point */}
-        <Marker position={ROUTE_COORDINATES[ROUTE_COORDINATES.length - 1]} icon={customerIcon}>
-          <Popup className="text-slate-900 font-semibold">Your Delivery Location</Popup>
+        {/* Dynamic Moving Driver */}
+        <Marker position={driverPos} icon={driverIcon}>
+          <Popup className="text-slate-900 font-sans">
+            <strong>{currentOrder?.driver?.name || 'Driver'}</strong> <br />
+            {status === 'out_for_delivery' ? 'On the way with your meal' : 'Awaiting dispatch'}
+          </Popup>
         </Marker>
+
+        {/* Route Line */}
+        <Polyline
+          positions={ROUTE_PATH}
+          pathOptions={{
+            color: '#3b82f6',
+            weight: 4,
+            dashArray: '8, 8',
+            opacity: 0.8,
+          }}
+        />
       </MapContainer>
-
-      {/* Floating Status Tag */}
-      <div className="absolute top-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-slate-200 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-        Live GPS Tracking
-      </div>
     </div>
   );
 }
