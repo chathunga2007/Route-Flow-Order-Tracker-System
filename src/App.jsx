@@ -4,12 +4,13 @@ import OrderStepper from './components/tracker/OrderStepper';
 import DeliveryCard from './components/tracker/DeliveryCard';
 import LiveMap from './components/tracker/LiveMap';
 import VendorDashboard from './components/vendor/VendorDashboard';
+import DriverPortal from './components/driver/DriverPortal';
 import CreateOrderModal from './components/common/CreateOrderModal';
-import { LayoutDashboard, Compass, Database, ShoppingBag, Loader2, Code2, Heart, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, Compass, Database, ShoppingBag, Loader2, Code2, Heart, Moon, Sun, Bike } from 'lucide-react';
 import { Toaster } from 'sonner';
 
 export default function App() {
-  const [viewMode, setViewMode] = useState('customer');
+  const [viewMode, setViewMode] = useState('customer'); // 'customer' | 'vendor' | 'driver'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { orders, activeOrderId, setActiveOrder, loading, subscribeToOrders, seedInitialData, isDark, toggleTheme } = useOrderStore();
 
@@ -27,7 +28,7 @@ export default function App() {
       <Toaster position="top-right" richColors theme={isDark ? 'dark' : 'light'} />
 
       <div className="w-full max-w-5xl mx-auto space-y-6 sm:space-y-8 flex-1">
-        {/* Header */}
+        {/* Responsive Navbar */}
         <header className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-6 border-b ${
           isDark ? 'border-slate-800' : 'border-slate-200'
         }`}>
@@ -38,11 +39,11 @@ export default function App() {
                 {loading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin ml-1" />}
               </h1>
               <p className={`text-[11px] sm:text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Live Delivery & Order Tracker
+                Enterprise Live Delivery & Telematics Platform
               </p>
             </div>
 
-            {/* Mobile View Toggle */}
+            {/* Mobile View Switcher */}
             <div className="flex sm:hidden items-center gap-2">
               <button
                 type="button"
@@ -62,6 +63,7 @@ export default function App() {
                   className={`p-2 rounded-lg text-xs transition cursor-pointer ${
                     viewMode === 'customer' ? 'bg-blue-600 text-white shadow' : (isDark ? 'text-slate-400' : 'text-slate-500')
                   }`}
+                  title="Customer"
                 >
                   <Compass className="w-4 h-4" />
                 </button>
@@ -70,8 +72,18 @@ export default function App() {
                   className={`p-2 rounded-lg text-xs transition cursor-pointer ${
                     viewMode === 'vendor' ? 'bg-blue-600 text-white shadow' : (isDark ? 'text-slate-400' : 'text-slate-500')
                   }`}
+                  title="Vendor"
                 >
                   <LayoutDashboard className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('driver')}
+                  className={`p-2 rounded-lg text-xs transition cursor-pointer ${
+                    viewMode === 'driver' ? 'bg-blue-600 text-white shadow' : (isDark ? 'text-slate-400' : 'text-slate-500')
+                  }`}
+                  title="Driver Portal"
+                >
+                  <Bike className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -97,6 +109,7 @@ export default function App() {
               <Database className="w-3.5 h-3.5" /> + Demo
             </button>
 
+            {/* Theme Toggle */}
             <button
               type="button"
               onClick={toggleTheme}
@@ -110,12 +123,13 @@ export default function App() {
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
+            {/* 3-Role View Mode Switcher */}
             <div className={`hidden sm:flex border p-1 rounded-xl shadow-sm ${
               isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
             }`}>
               <button
                 onClick={() => setViewMode('customer')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'customer'
                     ? 'bg-blue-600 text-white shadow-md'
                     : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
@@ -125,13 +139,23 @@ export default function App() {
               </button>
               <button
                 onClick={() => setViewMode('vendor')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   viewMode === 'vendor'
                     ? 'bg-blue-600 text-white shadow-md'
                     : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
                 }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5" /> Vendor
+              </button>
+              <button
+                onClick={() => setViewMode('driver')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'driver'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : (isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
+                }`}
+              >
+                <Bike className="w-3.5 h-3.5" /> Courier
               </button>
             </div>
           </div>
@@ -161,7 +185,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Dynamic Views */}
+        {/* Dynamic Multi-Role Views */}
         {orders.length === 0 && !loading ? (
           <div className={`p-8 sm:p-12 text-center border rounded-2xl space-y-3 shadow-sm ${
             isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
@@ -193,8 +217,10 @@ export default function App() {
               Loading active tracker...
             </div>
           )
-        ) : (
+        ) : viewMode === 'vendor' ? (
           <VendorDashboard />
+        ) : (
+          <DriverPortal />
         )}
 
         <CreateOrderModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
