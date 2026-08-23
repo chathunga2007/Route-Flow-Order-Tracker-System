@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useOrderStore } from '../../store/orderStore';
 import { X, Plus, Trash2, ShoppingBag } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 const MENU_ITEMS = [
@@ -17,6 +17,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
   const [address, setAddress] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const setActiveOrder = useOrderStore((state) => state.setActiveOrder);
 
   if (!isOpen) return null;
 
@@ -39,13 +40,15 @@ export default function CreateOrderModal({ isOpen, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!customerName || !address || selectedItems.length === 0) return;
+    if (!customerName.trim() || !address.trim() || selectedItems.length === 0) return;
 
     setSubmitting(true);
+    const newOrderId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
+
     try {
       const newOrder = {
-        customer: customerName,
-        address: address,
+        customer: customerName.trim(),
+        address: address.trim(),
         status: 'placed',
         items: selectedItems.map((i) => ({
           name: i.name,
@@ -66,13 +69,19 @@ export default function CreateOrderModal({ isOpen, onClose }) {
         createdAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, 'orders'), newOrder);
-      onClose();
+      await setDoc(doc(db, 'orders', newOrderId), newOrder);
+      
+      // Auto switch focus to the new order in tracking view
+      setActiveOrder(newOrderId);
+
+      // Reset state and close modal
       setSelectedItems([]);
       setCustomerName('');
       setAddress('');
+      onClose();
     } catch (err) {
       console.error('Error adding order:', err);
+      alert('Error placing order: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -89,7 +98,11 @@ export default function CreateOrderModal({ isOpen, onClose }) {
             </div>
             <h3 className="font-bold text-lg text-white">Place New Order</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition">
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="text-slate-400 hover:text-white transition p-1"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -104,7 +117,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
               placeholder="e.g. Kasun Fernando"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
             />
           </div>
 
@@ -116,7 +129,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
               placeholder="e.g. No 23, Galle Road, Bambalapitiya"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition"
             />
           </div>
 
@@ -177,7 +190,7 @@ export default function CreateOrderModal({ isOpen, onClose }) {
           <button
             type="submit"
             disabled={submitting || selectedItems.length === 0}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition"
+            className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition cursor-pointer"
           >
             {submitting ? 'Placing Order...' : 'Confirm & Place Live Order'}
           </button>

@@ -6,11 +6,12 @@ import LiveMap from './components/tracker/LiveMap';
 import VendorDashboard from './components/vendor/VendorDashboard';
 import CreateOrderModal from './components/common/CreateOrderModal';
 import { LayoutDashboard, Compass, Database, ShoppingBag, Loader2 } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 export default function App() {
   const [viewMode, setViewMode] = useState('customer');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { orders, activeOrderId, loading, subscribeToOrders, seedInitialData } = useOrderStore();
+  const { orders, activeOrderId, setActiveOrder, loading, subscribeToOrders, seedInitialData } = useOrderStore();
 
   useEffect(() => {
     const unsubscribe = subscribeToOrders();
@@ -30,6 +31,9 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white font-sans p-6 md:p-12">
+      {/* Toast Notification Container */}
+      <Toaster position="top-right" richColors theme="dark" />
+
       <div className="w-full max-w-5xl mx-auto space-y-8">
         {/* Top Navbar */}
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
@@ -76,6 +80,26 @@ export default function App() {
           </div>
         </header>
 
+        {/* Customer View Multi-Order Selector */}
+        {viewMode === 'customer' && orders.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            <span className="text-xs text-slate-400 uppercase font-semibold shrink-0 mr-2">Track Order:</span>
+            {orders.map((o) => (
+              <button
+                key={o.id}
+                onClick={() => setActiveOrder(o.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 border transition ${
+                  activeOrderId === o.id
+                    ? 'bg-blue-600/20 border-blue-500 text-blue-400'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                #{o.id} ({o.status})
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Dynamic Views */}
         {orders.length === 0 ? (
           <div className="p-12 text-center bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
@@ -102,7 +126,6 @@ export default function App() {
           <VendorDashboard />
         )}
 
-        {/* Customer Order Modal */}
         <CreateOrderModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       </div>
     </main>

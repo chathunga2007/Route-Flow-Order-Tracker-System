@@ -8,6 +8,10 @@ import {
   setDoc, 
   serverTimestamp 
 } from 'firebase/firestore';
+import { toast } from 'sonner';
+import { playNotificationSound } from '../utils/audio';
+
+let isFirstLoad = true;
 
 export const useOrderStore = create((set, get) => ({
   orders: [],
@@ -16,27 +20,63 @@ export const useOrderStore = create((set, get) => ({
 
   setActiveOrder: (id) => set({ activeOrderId: id }),
 
-  // Real-time Firestore Listener
+  // Real-time Firestore Listener with Smart Audio Alerts
   subscribeToOrders: () => {
     const ordersCol = collection(db, 'orders');
     
-    const unsubscribe = onSnapshot(ordersCol, (snapshot) => {
-      const ordersList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const unsubscribe = onSnapshot(
+      ordersCol, 
+      (snapshot) => {
+        const ordersList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
 
-      set({ 
-        orders: ordersList, 
-        loading: false,
-        activeOrderId: get().activeOrderId || (ordersList[0]?.id ?? null)
-      });
-    });
+        const previousOrders = get().orders;
+
+        // Skip audio alerts during initial app boot
+        if (!isFirstLoad) {
+          snapshot.docChanges().forEach((change) => {
+            const data = change.doc.data();
+            const orderId = change.doc.id;
+
+            if (change.type === 'added') {
+              playNotificationSound('new_order');
+              toast.success(`🎉 New Order Received: #${orderId}`, {
+                description: `${data.customer} placed an order for ${data.total}`,
+              });
+            }
+
+            if (change.type === 'modified') {
+              const oldOrder = previousOrders.find((o) => o.id === orderId);
+              if (oldOrder && oldOrder.status !== data.status) {
+                playNotificationSound('advance');
+                const statusName = data.status.replace(/_/g, ' ').toUpperCase();
+                toast.info(`📦 Order Status Updated!`, {
+                  description: `Order #${orderId} is now ${statusName}`,
+                });
+              }
+            }
+          });
+        }
+
+        isFirstLoad = false;
+
+        set({ 
+          orders: ordersList, 
+          loading: false,
+          activeOrderId: get().activeOrderId || (ordersList[0]?.id ?? null)
+        });
+      },
+      (error) => {
+        console.error("Firebase Snapshot Error: ", error);
+        set({ loading: false });
+      }
+    );
 
     return unsubscribe;
   },
 
-  // Update Status in Firestore (Vendor side action)
   updateOrderStatus: async (orderId, newStatus) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
@@ -46,10 +86,10 @@ export const useOrderStore = create((set, get) => ({
       });
     } catch (error) {
       console.error('Error updating order status:', error);
+      toast.error('Failed to update status: ' + error.message);
     }
   },
 
-  // Demo initial order add karanna
   seedInitialData: async () => {
     const demoId = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
     const defaultOrder = {
